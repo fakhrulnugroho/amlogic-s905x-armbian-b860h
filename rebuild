@@ -1322,7 +1322,7 @@ refactor_rootfs() {
         "MAINLINE_UBOOT='${RECORD_MAINLINE_UBOOT}'"
         "BOOTLOADER_IMG='${RECORD_BOOTLOADER_IMG}'"
         "BUILD_REPOSITORY='github.com/armbian/build'"
-        "REBUILD_REPOSITORY='github.com/fakhrulnugroho/amlogic-s9xxx-armbian'"
+        "REBUILD_REPOSITORY='github.com/fakhrulnugroho/amlogic-s905x-armbian-b860h'"
         "CONTRIBUTORS='${CONTRIBUTORS}'"
         "BUILDER_NAME='${builder_name}'"
         "PACKAGED_DATE='$(date +%Y-%m-%d)'"

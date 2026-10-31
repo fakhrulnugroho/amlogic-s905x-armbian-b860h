@@ -35,7 +35,7 @@ ophub_release_file="/etc/ophub-release"
 arch_info="$(arch)"
 #
 # The software management scripts download repository
-script_repo="https://github.com/fakhrulnugroho/amlogic-s9xxx-armbian.git"
+script_repo="https://github.com/fakhrulnugroho/amlogic-s905x-armbian-b860h.git"
 script_dir="build-armbian/armbian-files/common-files/usr/share/ophub/armbian-software"
 #
 # Set font color

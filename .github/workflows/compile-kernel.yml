@@ -190,7 +190,7 @@ jobs:
             kernel-${{ inputs.kernel_toolchain }}-${{ matrix.kernel_version }}-
 
       - name: Compile the kernel [ ${{ matrix.kernel_version }} ]
-        uses: fakhrulnugroho/amlogic-s9xxx-armbian@main
+        uses: fakhrulnugroho/amlogic-s905x-armbian-b860h@main
         if: ${{ steps.disk.outputs.status == 'success' && !cancelled() }}
         with:
           build_target: kernel
