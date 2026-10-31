@@ -6,6 +6,8 @@
 /compile-kernel/kernel
 /compile-kernel/output
 /compile-kernel/tools/armbian
+/build-armbian/armbian-files/common-files/usr/lib/firmware
+/ccache
 .DS_Store
 npm-debug.log*
 *.rej

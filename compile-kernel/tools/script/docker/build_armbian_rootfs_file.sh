@@ -199,7 +199,7 @@ EOF
 
         # 05. Add armbian-kernel script
         if [[ -n "${compile_kernel}" && "${compile_kernel}" =~ ^(true|yes)$ ]]; then
-            down_script="https://raw.githubusercontent.com/ophub/amlogic-s9xxx-armbian/refs/heads/main/build-armbian/armbian-files/common-files/usr/sbin/armbian-kernel"
+            down_script="https://raw.githubusercontent.com/fakhrulnugroho/amlogic-s9xxx-armbian/refs/heads/main/build-armbian/armbian-files/common-files/usr/sbin/armbian-kernel"
             add_script="usr/sbin/armbian-kernel"
             sudo mkdir -p usr/sbin/
             sudo wget -q --show-progress --no-check-certificate -O ${add_script} ${down_script}

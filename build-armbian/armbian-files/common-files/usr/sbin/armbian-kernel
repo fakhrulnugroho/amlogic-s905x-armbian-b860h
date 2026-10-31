@@ -36,7 +36,7 @@ script_name="${script_path}/armbian_compile_kernel.sh"
 arch_info="$(arch)"
 
 # The kernel compilation scripts download repository
-script_repo="https://github.com/ophub/amlogic-s9xxx-armbian.git"
+script_repo="https://github.com/fakhrulnugroho/amlogic-s9xxx-armbian.git"
 script_dir="compile-kernel"
 
 # Set font color
