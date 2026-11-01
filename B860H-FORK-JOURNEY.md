@@ -3,14 +3,14 @@
 Dokumen ini merangkum rencana menjadikan repo ini fork khusus STB ZTE B860H (Amlogic S905X, RAM 2 GB), board `s905x-b860h`, ID 106.
 
 - **Dibuat:** 2026-10-31
-- **Status:** fase 0 selesai, fase 1 berjalan
+- **Status:** fase 0 dan 1 selesai
 - **Tujuan akhir:** image server minimal dengan SSH dari repo ini, untuk unit lain dengan hardware sama persis
 - **Kebutuhan:** koneksi LAN, tanpa WiFi, dan tanpa backup eMMC atas keputusan pemilik unit
 - **Repo:** `fakhrulnugroho/amlogic-s905x-armbian-b860h`
 - **Keputusan:** murni fork OPHUB berbasis Armbian, tidak mengikuti upstream, dan tidak membuat sistem baru (`s905x-linux`/BusyBox)
 - **Yang tetap dipakai:** `rebuild`, `recompile`, Armbian, dan semua skrip pemulihan
 
-Temuan di dokumen ini berasal dari membaca kode, DTB, dan isi kernel 6.12.114 serta 6.18.59. Belum ada yang diuji di hardware.
+Temuan di dokumen ini berasal dari membaca kode, DTB, dan isi kernel 6.12.114 serta 6.18.59. Di hardware, baru boot image fase 1 dari flashdisk yang sudah diuji.
 
 ## Peta fase
 
@@ -60,11 +60,22 @@ Layout 117 MiB adalah layout yang di #3558 dilaporkan bermasalah untuk s905x, ta
 - [x] Lengkapi `.gitignore` untuk `build-armbian/armbian-files/common-files/usr/lib/firmware` dan `ccache/`.
 - [x] Jadikan kernel `6.12.y` sebagai default B860H di `model_database.conf`.
 - [x] Commit dan push ke fork, karena workflow memakai kode dari `main` di GitHub.
-- [ ] Commit dan push perbaikan nama repo, karena `main` di GitHub masih menunjuk ke nama yang 404.
-- [ ] Bangun image pertama dengan `build-armbian-arm64-server-image.yml`. `build-armbian-using-releases-files.yml` belum bisa dipakai, karena fork belum punya Releases.
-- [ ] Uji boot dari SD atau flashdisk.
+- [x] Commit dan push perbaikan nama repo.
+- [x] Bangun image pertama dengan `build-armbian-arm64-server-image.yml`.
+- [x] Uji boot dari flashdisk.
 
-**Selesai kalau:** `sudo ./rebuild -b s905x-b860h -k 6.12.y`, atau workflow di fork, menghasilkan image yang bisa boot dari SD. Build lokal butuh base image `*-trunk_*.img`.
+Hasil build dan uji (2026-11-01):
+
+| Item | Hasil |
+|---|---|
+| Release | `Armbian_trixie_arm64_server_2026.11` |
+| Image | `Armbian_26.11.0_amlogic_s905x-b860h_trixie_6.12.114_server_2026.11.01.img.gz` |
+| Input workflow | `set_release=trixie`, `armbian_board=s905x-b860h`, `armbian_kernel=6.12.y` |
+| Uji di unit | Boot dari flashdisk berhasil, eMMC tidak dipasangi image ini |
+
+Biarkan input `config_board` di `odroidn2`. Input itu nama board di `armbian/build` untuk base image, bukan target perangkat, jadi nilai `b860h` membuat build gagal.
+
+**Selesai kalau:** `sudo ./rebuild -b s905x-b860h -k 6.12.y`, atau workflow di fork, menghasilkan image yang bisa boot dari SD atau flashdisk. Build lokal butuh base image `*-trunk_*.img`.
 
 ## Fase 2: Hapus data
 
