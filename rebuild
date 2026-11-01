@@ -1119,6 +1119,13 @@ refactor_rootfs() {
             -exec rm -rf {} +
     }
 
+    # Mask services a LAN-only server does not use. A mask also stops D-Bus and socket activation.
+    rm -f etc/systemd/system/dbus-fi.w1.wpa_supplicant1.service
+    for unit in wpa_supplicant.service man-db.timer openvpn.service rpcbind.service rpcbind.socket nfs-client.target vnstat.service; do
+        rm -f etc/systemd/system/*.wants/${unit}
+        ln -sf /dev/null etc/systemd/system/${unit}
+    done
+
     # Add custom Armbian information
     release_lines=(
         "PLATFORM='${PLATFORM}'"

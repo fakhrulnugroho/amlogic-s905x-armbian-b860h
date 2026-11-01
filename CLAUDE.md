@@ -32,7 +32,7 @@ sudo ./recompile -k 6.12.y -m dtbs
 
 Local `rebuild` input must be an uncompressed image matching `build/output/images/*-trunk_*.img` with an ext4 rootfs. The version in the filename sets the output name. `action.yml` decompresses and renames images for CI; local runs do not. Output is `build/output/images/Armbian_<ver>_<platform>_<board>_<codename>_<kernel>_server_<date>.img.gz`.
 
-`rebuild` downloads missing kernels and u-boot at runtime from `ophub/kernel` and `ophub/u-boot` into gitignored directories. It no longer downloads `ophub/firmware`, and `refactor_rootfs` deletes every entry in the image's `usr/lib/firmware` except `meson`, `rtl_nic` and `regulatory.db*`.
+`rebuild` downloads missing kernels and u-boot at runtime from `ophub/kernel` and `ophub/u-boot` into gitignored directories. It no longer downloads `ophub/firmware`, and `refactor_rootfs` deletes every entry in the image's `usr/lib/firmware` except `meson`, `rtl_nic` and `regulatory.db*`. It also masks the WiFi, NFS, OpenVPN, `vnstat` and `man-db` units, so a service that must run needs removing from that list.
 
 ## Architecture
 
