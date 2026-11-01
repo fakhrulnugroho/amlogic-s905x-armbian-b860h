@@ -980,7 +980,7 @@ refactor_rootfs() {
     if [[ "${rootfs_type}" == "btrfs" ]]; then
         fstab_string="defaults,noatime,compress=zstd:6"
     else
-        fstab_string="defaults,noatime,nodiratime,commit=600,errors=remount-ro"
+        fstab_string="defaults,noatime,nodiratime,commit=60,errors=remount-ro"
     fi
     # Update mount settings
     sed -i "s|^LABEL=ROOTFS.*|UUID=${ROOTFS_UUID}  /      ${rootfs_type}  ${fstab_string}  0 1|g" etc/fstab
