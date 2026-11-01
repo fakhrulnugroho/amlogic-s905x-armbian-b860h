@@ -13,14 +13,12 @@
 # Copyright (C) 2022- https://github.com/7Ji/ampart
 # Copyright (C) 2021- https://github.com/ophub/amlogic-s9xxx-armbian
 #
-# Command: armbian-install [-m yes/no] [-a yes/no] [-l yes/no]
+# Command: armbian-install [-m yes/no] [-l yes/no]
 # Optional parameters: -m = use mainline u-boot (default: no)
-#                      -a = use ampart partition table adjustment tool (default: yes)
 #                      -l = show a list of all devices (default: no)
 #
 # Examples:
 #  Use mainline u-boot       : armbian-install -m yes
-#  Disable ampart tool       : armbian-install -a no
 #  Show all available devices: armbian-install -l yes
 #
 #======================================== Functions list ========================================
@@ -31,7 +29,6 @@
 # init_var           : Initialize all runtime variables and parse options
 # show_aml_model     : Display the list of supported Amlogic devices
 # set_rootfs_type    : Select the root filesystem type
-# ampart_tool        : Repartition eMMC using ampart tool
 # create_partition   : Create eMMC partition layout
 # copy_bootfs        : Copy boot partition files to eMMC
 # copy_rootfs        : Copy root partition files to eMMC
@@ -42,10 +39,6 @@
 auto_mainline_uboot="no"
 # Show all device list by default (-l)
 show_all_list="no"
-# Use ampart partition tool by default (-a)
-default_ampart="yes"
-# Configure the list of SoCs that do not use the ampart tool by default.
-without_ampart=("s905x")
 
 # Set install list profile
 model_conf="/etc/model_database.conf"
@@ -73,7 +66,6 @@ error_msg() {
 check_release_file() {
     [[ -s "${ophub_release_file}" ]] || error_msg "[ ${ophub_release_file} ] file is missing!"
     source "${ophub_release_file}"
-    [[ " ${without_ampart[*]} " =~ " ${SOC} " ]] && default_ampart="no"
 }
 
 # Check dependencies
@@ -105,7 +97,7 @@ init_var() {
     echo -e "${STEPS} Initializing the environment..."
 
     # If it is followed by [ : ], it means that the option requires a parameter value
-    get_all_ver="$(getopt "m:a:l:" "${@}")"
+    get_all_ver="$(getopt "m:l:" "${@}")"
 
     while [[ -n "${1}" ]]; do
         case "${1}" in
@@ -115,14 +107,6 @@ init_var() {
                 shift
             else
                 error_msg "Invalid -m parameter [ ${2} ]!"
-            fi
-            ;;
-        -a | --Ampart_tool)
-            if [[ -n "${2}" ]]; then
-                [[ "${2}" == "yes" ]] && default_ampart="yes" || default_ampart="no"
-                shift
-            else
-                error_msg "Invalid -a parameter [ ${2} ]!"
             fi
             ;;
         -l | --List_all)
@@ -142,7 +126,6 @@ init_var() {
 
     # Display settings results
     echo -e "${INFO} Use mainline u-boot: [ ${auto_mainline_uboot} ]"
-    echo -e "${INFO} Use ampart tool: [ ${default_ampart} ]"
     echo -e "${INFO} Show all devices: [ ${show_all_list} ]"
 
     # Find a list of devices of the same family
@@ -229,39 +212,21 @@ show_aml_model() {
         # Add a split line every 10 lines
         [[ "$(echo ${line} | awk '{print $1}')" == *"0" ]] && printf "%-s\n" "${split_line}"
     done
-    # Print custom options and end split lines
-    printf "%-5s %-10s %-45s %-50s\n" 0 Other Customize Enter-custom-dtb-name
+    # Print end split lines
     printf "%-s\n" "${split_line}"
 
     # Display device options
     echo -ne "${OPTIONS} Please Input ID: "
     read boxid
-    if [[ "${boxid}" -eq "0" ]]; then
-        read -p "Please Input SoC Name(such as s9xxx): " AMLOGIC_SOC
-        AMLOGIC_SOC="${AMLOGIC_SOC}"
-        #
-        read -p "Please Input DTB Name(such as meson-xxx.dtb): " FDTFILE
-        FDTFILE="${FDTFILE}"
-        #
-        read -p "Please Input UBOOT_OVERLOAD Name(such as u-boot-xxx.bin): " UBOOT_OVERLOAD
-        UBOOT_OVERLOAD="${UBOOT_OVERLOAD}"
-        #
-        read -p "Please Input MAINLINE_UBOOT Name(such as xxx-u-boot.bin.sd.bin): " MAINLINE_UBOOT
-        MAINLINE_UBOOT="${MAINLINE_UBOOT}"
-        #
-        read -p "Please Input BOOTLOADER_IMG Name(such as xxx-bootloader.img): " BOOTLOADER_IMG
-        BOOTLOADER_IMG="${BOOTLOADER_IMG}"
-    else
-        ret="$(search_aml_model "${boxid}")"
-        [[ -z "${ret}" ]] && error_msg "Input error, exit!"
+    ret="$(search_aml_model "${boxid}")"
+    [[ -z "${ret}" ]] && error_msg "Input error, exit!"
 
-        MODEL_NAME="$(echo "${ret}" | awk -F ':' '{print $2}')"
-        AMLOGIC_SOC="$(echo "${ret}" | awk -F ':' '{print $3}')"
-        FDTFILE="$(echo "${ret}" | awk -F ':' '{print $4}')"
-        UBOOT_OVERLOAD="$(echo "${ret}" | awk -F ':' '{print $5}')"
-        MAINLINE_UBOOT="$(echo "${ret}" | awk -F ':' '{print $6}')"
-        BOOTLOADER_IMG="$(echo "${ret}" | awk -F ':' '{print $7}')"
-    fi
+    MODEL_NAME="$(echo "${ret}" | awk -F ':' '{print $2}')"
+    AMLOGIC_SOC="$(echo "${ret}" | awk -F ':' '{print $3}')"
+    FDTFILE="$(echo "${ret}" | awk -F ':' '{print $4}')"
+    UBOOT_OVERLOAD="$(echo "${ret}" | awk -F ':' '{print $5}')"
+    MAINLINE_UBOOT="$(echo "${ret}" | awk -F ':' '{print $6}')"
+    BOOTLOADER_IMG="$(echo "${ret}" | awk -F ':' '{print $7}')"
 
     echo -e "${INFO} Input Box ID: [ ${boxid} ]"
     echo -e "${INFO} Model Name: [ ${MODEL_NAME} ]"
@@ -303,39 +268,6 @@ EOF
     echo -e "${INFO} Selected filesystem type: [ ${file_system_type} ]"
 }
 
-# Project repository:   https://github.com/7Ji/ampart
-# Download from:        https://github.com/7Ji/ampart/releases/download/v1.2/ampart-v1.2-aarch64-static.gz
-# Function description: ampart is a partitioning tool which can modify the proprieary partition table on internal eMMC.
-ampart_tool() {
-    # declare the partition layout
-    local snapshot_expected='data::-1:4'
-
-    # Note there's no quote around ${snapshot_expected}
-    ampart "${DEV_EMMC}" --mode dclone ${snapshot_expected} &>/dev/null
-    if ((${?})); then
-        # Handle the situation where ampart fails to change the layout
-        return 1
-    fi
-
-    local log="$(ampart "${DEV_EMMC}" --mode dsnapshot 2>/dev/null)"
-    if ((${?})); then
-        # Handle the situation where ampart fails to read the new partitions
-        return 2
-    fi
-
-    local snapshots
-    readarray -d $'\n' -t snapshots <<<"${log}"
-
-    # compare snapshots, 0 here refers to the decimal one
-    if [[ "${snapshots[0]}" == "${snapshot_expected}" ]]; then
-        # Successfully written the partitions
-        return 0
-    else
-        # Result partitions different, maybe should handle it
-        return 3
-    fi
-}
-
 # Create eMMC partition layout
 create_partition() {
     cd /
@@ -372,63 +304,10 @@ create_partition() {
         done
     fi
 
-    # Use the ampart partition tool
-    AMPART_STATUS="no"
-    [[ -x "/usr/bin/ampart" && "${default_ampart}" == "yes" ]] && {
-        ampart_tool
-        [[ "${?}" -eq "0" ]] && AMPART_STATUS="yes" && echo -e "${STEPS} Successfully repartitioned eMMC with ampart."
-    }
-
     # Set partition size (Unit: MiB)
-    if [[ "${AMPART_STATUS}" == "yes" ]]; then
-        BLANK1="117" # After using the ampart to part disk, space after [ 117 MiB ] could be used.
-        BOOT="512"
-        BLANK2="0"
-    elif [[ "${AMLOGIC_SOC}" == "s912" && "${boxid}" -eq "213" ]]; then
-        BLANK1="700" # OneCloudPro-V1.2
-        BOOT="512"
-        BLANK2="220"
-    elif [[ "${AMLOGIC_SOC}" == "s912" && "${boxid}" -eq "214" ]]; then
-        BLANK1="256" # new OneCloudPro-V1.2 based on base image android_tv_onethingcloud-money-maker-pro-3rd-s912.tar.xz
-        BOOT="256"
-        BLANK2="0"
-    elif [[ "${AMLOGIC_SOC}" == "s912" || "${AMLOGIC_SOC}" == "s905d" ]]; then
-        BLANK1="68"
-        BOOT="512"
-        BLANK2="220"
-    elif [[ "${AMLOGIC_SOC}" == "s905x" ]]; then
-        BLANK1="700"
-        BOOT="512"
-        BLANK2="0"
-    elif [[ "${AMLOGIC_SOC}" == "s905l3a" && "${boxid}" -eq "304" ]]; then
-        BLANK1="570" # e900v22c/d: The first [ 570 MiB ] is not writable.
-        BOOT="512"
-        BLANK2="0"
-    elif [[ "${AMLOGIC_SOC}" == "s905l3a" && "${boxid}" -eq "305" ]]; then
-        BLANK1="108" # CM311-1a-YST: Must skip [ 108 MiB ]
-        BOOT="512"   # A total of [ 1024 MiB ] can be used in this block, gave up [ 1024-512=512 MiB ]
-        BLANK2="778" # Rootfs partition could be set after [ 1398 MiB ] of the total disk, Multi-backward offset 100 MiB, [ 1398-108-512=778 MiB ]
-    elif [[ "${AMLOGIC_SOC}" == "s905l3b" ]]; then
-        BLANK1="128" # https://github.com/janko888/MBH-M30xA
-        BOOT="512"   # M302A/M304A, Compatible with Android 4 and Android 9 firmware
-        BLANK2="720"
-    elif [[ "${FDTFILE}" == "meson-sm1-skyworth-lb2004-a4091.dtb" ]]; then
-        BLANK1="108" # Tencent Aurora 3Pro: Must skip [ 108 MiB ]
-        BOOT="512"   # A total of [ 768 MiB ] can be used in this block, gave up [ 768-512=256 MiB ]
-        BLANK2="562" # Rootfs partition could be set after [ 1182 MiB ] of the total disk, [ 1182-108-512=562 MiB ]
-    elif [[ "${boxid}" -eq "525" ]]; then
-        BLANK1="108" # Whale(S905X3): Must skip [ 108 MiB ]
-        BOOT="512"   # A total of [ 1024 MiB ] can be used in this block, gave up [ 1024-512=512 MiB ]
-        BLANK2="650" # Rootfs partition could be set after [ 1270 MiB ] of the total disk, [ 1270-108-512=650 MiB ]
-    elif [[ "${boxid}" -eq "409" || "${boxid}" -eq "410" ]]; then
-        BLANK1="700" # WXY-OES(A311D), WXY-OES-Plus(s922x): Must skip [ 700 MiB ]
-        BOOT="512"
-        BLANK2="0"
-    else
-        BLANK1="68"
-        BOOT="512"   # S905x3: A total of [ 1120 MiB ] can be used in this block, and the remaining [ 608 MiB ] can be used.
-        BLANK2="770" # Rootfs partition could be set after [ 1350 MiB ] of the total disk.
-    fi
+    BLANK1="700"
+    BOOT="512"
+    BLANK2="0"
 
     # Format emmc disk
     echo -e "${INFO} Creating MBR partition table and partitions."
@@ -594,7 +473,6 @@ EOF
     sed -i "s|^BOOT_CONF=.*|BOOT_CONF='${BOOT_CONF}'|g" ${ophub_release_file}
     sed -i "s|^DISK_TYPE=.*|DISK_TYPE='emmc'|g" ${ophub_release_file}
     sed -i "s|^MLUBOOT_STATUS=.*|MLUBOOT_STATUS='${auto_mainline_uboot}'|g" ${ophub_release_file}
-    sed -i "s|^AMPART_STATUS=.*|AMPART_STATUS='${AMPART_STATUS}'|g" ${ophub_release_file}
 
     # Remove useless scripts
     rm -f ${DIR_INSTALL}/usr/sbin/armbian-tf

@@ -271,10 +271,9 @@ armbian-install
 | Optional Parameter | Default Value | Options | Description |
 | --- | --- | --- | --- |
 | -m | no | yes/no | Use mainline u-boot |
-| -a | yes | yes/no | Use [ampart](https://github.com/7Ji/ampart) partition adjustment tool |
 | -l | no | yes/no | Display the entire device list |
 
-Example: `armbian-install -m yes -a no`
+Example: `armbian-install -m yes`
 
 ### 8.2 Installation Method for Rockchip Series
 
@@ -1302,7 +1301,7 @@ If the Android boot logo is needed, the 852M + 32M (`852M~884M`) `logo` partitio
 
 #### 12.10.4 For eMMC Installation
 
-If your device fails when using `armbian-install` and the `-a` parameter (use [ampart](https://github.com/7Ji/ampart) to adjust the eMMC partition layout) is `yes` (default value), then your box cannot use the optimal layout (that is, adjust the DTB partition information to only have `data`, then generate eMMC partition information from this, and then move all remaining partitions forward. In this way, the space from 117M onwards can be used). You need to modify the corresponding partition information in [armbian-install](../build-armbian/armbian-files/common-files/usr/sbin/armbian-install).
+`armbian-install` in this fork always uses the s905x layout (`BLANK1=700`, `BOOT=512`, `BLANK2=0`) and no longer runs [ampart](https://github.com/7Ji/ampart), which produced the 117M layout that is reported as unstable on s905x. If your device needs a different layout, modify the corresponding partition information in [armbian-install](../build-armbian/armbian-files/platform-files/amlogic/rootfs/usr/sbin/armbian-install).
 
 In this file, the key parameters for declaring the partition layout are three: `BLANK1`, `BOOT`, `BLANK2`. Among them, `BLANK1` represents the unusable size starting from the beginning of eMMC; `BOOT` represents the size of the partition created after `BLANK1` for storing the kernel, DTB, etc., preferably not less than 256M, `BLANK2` represents the unusable size after `BOOT`. The space after this will be used to create the `ROOT` partition to store all the data outside the `/boot` mount point in the system. All three should be integers, and the unit is MiB (1 MiB = 1024 KiB = 1024^2 Byte)
 
