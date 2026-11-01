@@ -8,6 +8,7 @@ Dokumen ini merangkum rencana menjadikan repo ini fork khusus STB ZTE B860H (Aml
 - **Kebutuhan:** koneksi LAN, tanpa WiFi, dan tanpa backup eMMC atas keputusan pemilik unit
 - **Repo:** `fakhrulnugroho/amlogic-s905x-armbian-b860h`
 - **Keputusan:** murni fork OPHUB berbasis Armbian, tidak mengikuti upstream, dan tidak membuat sistem baru (`s905x-linux`/BusyBox)
+- **Kernel:** tetap memakai `ophub/kernel`. Rencana build kernel sendiri dibatalkan karena terlalu berisiko dan tidak ada kebutuhan yang menuntutnya
 - **Yang tetap dipakai:** `rebuild`, `recompile`, Armbian, dan semua skrip pemulihan
 
 Temuan di dokumen ini berasal dari membaca kode, DTB, dan isi kernel 6.12.114 serta 6.18.59. Di hardware, baru boot image fase 1 dari flashdisk yang sudah diuji.
@@ -20,10 +21,9 @@ Temuan di dokumen ini berasal dari membaca kode, DTB, dan isi kernel 6.12.114 se
 | 1 | Lepas dari upstream | Image dari fork bisa boot dari SD |
 | 2 | Hapus data | Build dan boot sama seperti fase 1 |
 | 3 | Hapus cabang kode | `bash -n` lolos, build dan boot tetap sama |
-| 4 | Kernel sendiri (opsional) | `armbian-update` memakai kernel sendiri, semua versi terkunci |
-| 5 | Tuning di image | Image hasil tuning bisa boot dan dipasang ke eMMC unit uji |
+| 4 | Tuning di image | Image hasil tuning bisa boot dan dipasang ke eMMC unit uji |
 
-Tiap kelompok perubahan masuk commit terpisah, supaya kegagalan di satu fase mudah dibatalkan. Target hanya unit B860H dengan hardware sama, jadi fase 2 dan 3 berjalan sesuai daftar. Fase 5 boleh dikerjakan sebelum fase 2.
+Tiap kelompok perubahan masuk commit terpisah, supaya kegagalan di satu fase mudah dibatalkan. Target hanya unit B860H dengan hardware sama, jadi fase 2 dan 3 berjalan sesuai daftar. Fase 4 boleh dikerjakan sebelum fase 2.
 
 ## Fase 0: Baseline di unit
 
@@ -113,27 +113,7 @@ Isi image berubah di fase ini: `/boot` tidak lagi memuat 5 file `u-boot-*.bin` s
 
 **Selesai kalau:** `bash -n` lolos untuk semua skrip, lalu build dan boot tetap sama.
 
-## Fase 4: Kernel sendiri (opsional)
-
-**Tujuan:** memegang kendali atas kernel, DTB, dan driver. Fase ini hanya perlu kalau ada kebutuhan yang tidak bisa dipenuhi kernel ophub, karena WiFi tidak lagi menjadi alasan.
-
-- [ ] Fork `unifreq/linux-6.12.y`. Jangan memakai Linux mainline, karena DTS B860H dan `TEXT_OFFSET` hanya ada di unifreq.
-- [ ] Simpan `config-6.12` di `compile-kernel/tools/config/`.
-- [ ] Build dengan `-k 6.12.y -p true`.
-- [ ] Perbaiki DTB di source kernel: tombol power, node WiFi/BT, dan LED. Ini perlu pemetaan GPIO dari unit asli.
-- [ ] Terbitkan kernel di repo sendiri, lalu arahkan `kernel_repo` ke sana.
-- [ ] Kunci commit source kernel, config, toolchain, dan base image.
-
-Build dan pengujian kernel harus memperhatikan hal berikut:
-
-- Selalu pakai `-k`. Build versi tanpa config lokal menghapus semua config di folder tersebut, termasuk `config-6.18`.
-- Patch tidak diterapkan tanpa `-p true`.
-- Patch yang gagal hanya memberi peringatan dan build tetap lanjut, jadi cek log-nya.
-- Pakai kernel lokal dengan `-k <versi> -a false`, karena tanpa itu `rebuild` tetap mencari versi terbaru.
-
-**Selesai kalau:** `armbian-update` memakai kernel sendiri, dan versi source, config, serta toolchain sudah dikunci.
-
-## Fase 5: Tuning di image
+## Fase 4: Tuning di image
 
 **Tujuan:** memasukkan penyesuaian RAM 2 GB dan koneksi LAN ke image, supaya semua perangkat mendapat hasil yang sama.
 
@@ -146,7 +126,7 @@ Build dan pengujian kernel harus memperhatikan hal berikut:
 - [ ] Ganti ke `BUILD_MINIMAL=yes` di workflow base image, karena targetnya server minimal. Uji terpisah, karena belum teruji dengan `rebuild`.
 - [ ] Pastikan paket `armbian-install` ada di image minimal: `parted`, `mkfs.*`, `hexdump`, `fdisk`, dan `lsblk`.
 - [ ] Nonaktifkan layanan yang tidak dipakai di server LAN.
-- [ ] Pangkas firmware dan config kernel hanya kalau masih perlu.
+- [ ] Pangkas firmware hanya kalau masih perlu.
 
 **Selesai kalau:** image hasil tuning bisa boot dari SD, lalu terpasang dan boot dari eMMC unit uji tanpa SD.
 
@@ -158,10 +138,10 @@ Build dan pengujian kernel harus memperhatikan hal berikut:
 | Bootloader HG680P ditulis ke unit baru | Ada laporan bootloop pada box berlabel 2 GB yang terbaca 1 GiB | Uji di unit yang boleh gagal |
 | Unit B860H lain berbeda varian | RAM bisa 1 GB, dan WiFi bisa berbeda | Cek RAM dan model tiap unit sebelum pasang |
 | File HG680P tidak ada di `ophub/u-boot` | Kolom `BOOTLOADER_IMG` belum bisa langsung dipakai | Sediakan dan verifikasi file sendiri |
-| DTB di repo diubah | Ditimpa kernel saat `rebuild` dan `armbian-update` | Ubah di source kernel |
+| DTB di repo diubah | Ditimpa kernel saat `rebuild` dan `armbian-update` | Pakai DTB bawaan kernel apa adanya |
 | Skrip perangkat masih ke upstream | `armbian-sync` menimpa skrip kustom | Selesaikan fase 1 sebelum image dipakai |
 | Firmware dipangkas sampai 5 folder atau kurang | Semua firmware diunduh ulang | Sesuaikan cek di `download_depends` |
-| Modul kernel dibuang berdasarkan nama | Contohnya `MDIO_BUS_MUX_MESON_GXL` kemungkinan dibutuhkan LAN internal | Pangkas config paling akhir dan uji satu per satu |
+| Modul kernel dinonaktifkan berdasarkan nama | Contohnya `MDIO_BUS_MUX_MESON_GXL` kemungkinan dibutuhkan LAN internal | Nonaktifkan satu per satu dan uji LAN tiap perubahan |
 | Ketergantungan pada ophub setelah fase 3 | Build gagal kalau `ophub/kernel`, `ophub/u-boot`, `ophub/firmware`, atau image Docker berubah | Pindahkan yang penting ke repo sendiri |
 
 ## Jangan dihapus
