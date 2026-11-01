@@ -91,8 +91,6 @@ kernel_usage=""
 stable_kernel=("6.12.y" "6.18.y")
 flippy_kernel=(${stable_kernel[@]})
 beta_kernel=(${stable_kernel[@]})
-rk3588_kernel=("6.1.y" "6.12.y")
-rk35xx_kernel=("6.1.y" "6.12.y")
 specific_6xy=("6.1.y" "6.6.y" "6.12.y" "6.18.y")
 specific_5xy=("5.10.y" "5.15.y")
 # Set to automatically use the latest kernel
@@ -306,10 +304,9 @@ check_data() {
                 grep -E "^.*:yes$" | awk -F':' '{print $14}' |
                 sort -u | xargs
         ))
-    elif [[ "${build_board}" =~ ^(amlogic|rockchip|allwinner)([0-9]+_[0-9]+|[0-9]+)?$ ]]; then
-        # Get the platform name and range, such as [ amlogic50 ], [ rockchip50_100 ], etc.
-        # name is [ amlogic ], [ rockchip ], [ allwinner ], range is [ 50 ], [ 50_100 ], etc.
-        # amlogic50 -> platform_name=amlogic, platform_range=50, rockchip50_100 -> platform_name=rockchip, platform_range=50_100
+    elif [[ "${build_board}" =~ ^(amlogic)([0-9]+_[0-9]+|[0-9]+)?$ ]]; then
+        # Get the platform name and range, such as [ amlogic50 ], [ amlogic50_100 ], etc.
+        # amlogic50 -> platform_name=amlogic, platform_range=50
         platform_name="${BASH_REMATCH[1]}"
         platform_range="${BASH_REMATCH[2]}"
         build_armbian=($(
@@ -317,7 +314,7 @@ check_data() {
                 grep -E "^.*:${platform_name}:.*:yes$" | awk -F':' '{print $14}' |
                 sort -u | xargs
         ))
-        # Slice by range if specified, such as [ amlogic50 ], [ rockchip50_100 ], etc.
+        # Slice by range if specified, such as [ amlogic50 ], [ amlogic50_100 ], etc.
         if [[ "${platform_range}" =~ ^([0-9]+)_([0-9]+)$ ]]; then
             build_armbian=("${build_armbian[@]:${BASH_REMATCH[1]}:$((BASH_REMATCH[2] - BASH_REMATCH[1]))}")
         elif [[ -n "${platform_range}" ]]; then
@@ -377,7 +374,7 @@ check_data() {
 
         # Check if the value is "all".
         if [[ "${value}" == "all" ]]; then
-            # If the value is "all", assign the value of ${key}_kernel. such as [ stable_kernel, rk3588_kernel, etc. ]
+            # If the value is "all", assign the value of ${key}_kernel. such as [ stable_kernel, flippy_kernel, etc. ]
             eval "value=\"\${${key}_kernel[@]}\""
         elif [[ "${value}" =~ ^[1-9]+ ]]; then
             if [[ "${value}" == "5.x.y" ]]; then
@@ -614,7 +611,6 @@ confirm_version() {
     # Columns of ${model_conf}:
     # 1.ID  2.MODEL  3.SOC  4.FDTFILE  5.UBOOT_OVERLOAD  6.MAINLINE_UBOOT  7.BOOTLOADER_IMG  8.DESCRIPTION
     # 9.KERNEL_TAGS  10.PLATFORM  11.FAMILY  12.BOOT_CONF  13.CONTRIBUTORS  14.BOARD  15.BUILD
-    # Column 5, called <UBOOT_OVERLOAD> in Amlogic, <TRUST_IMG> in Rockchip, Not used in Allwinner.
 
     # Find [ the first ] configuration information with [ the same BOARD name ] and [ BUILD as yes ] in the ${model_conf} file.
     board_conf="$(
@@ -630,7 +626,6 @@ confirm_version() {
     SOC="$(echo ${board_conf} | awk -F':' '{print $3}')"
     FDTFILE="$(echo ${board_conf} | awk -F':' '{print $4}')"
     UBOOT_OVERLOAD="$(echo ${board_conf} | awk -F':' '{print $5}')"
-    TRUST_IMG="${UBOOT_OVERLOAD}"
     MAINLINE_UBOOT="$(echo ${board_conf} | awk -F':' '{print $6}')"
     BOOTLOADER_IMG="$(echo ${board_conf} | awk -F':' '{print $7}')"
     KERNEL_TAGS="$(echo ${board_conf} | awk -F':' '{print $9}')"
@@ -641,14 +636,12 @@ confirm_version() {
 
     # Check whether the key parameters are correct
     [[ -n "${PLATFORM}" ]] || error_msg "Invalid PLATFORM parameter: [ ${PLATFORM} ]"
-    # Set supported platform name
-    support_platform=("amlogic" "rockchip" "allwinner")
-    [[ -n "$(echo "${support_platform[@]}" | grep -w "${PLATFORM}")" ]] || error_msg "[ ${PLATFORM} ] not supported."
+    # Only Amlogic is supported
+    [[ "${PLATFORM}" == "amlogic" ]] || error_msg "[ ${PLATFORM} ] not supported."
 
     # Add u-boot files record information
     [[ -n "${MAINLINE_UBOOT}" ]] && RECORD_MAINLINE_UBOOT="/usr/lib/u-boot/${MAINLINE_UBOOT}" || RECORD_MAINLINE_UBOOT=""
     [[ -n "${BOOTLOADER_IMG}" ]] && RECORD_BOOTLOADER_IMG="/usr/lib/u-boot/${BOOTLOADER_IMG}" || RECORD_BOOTLOADER_IMG=""
-    [[ -n "${TRUST_IMG}" ]] && RECORD_TRUST_IMG="/usr/lib/u-boot/${TRUST_IMG}" || RECORD_TRUST_IMG=""
     # Set the Amlogic u-boot series
     family_rename="${FAMILY//-/_}"
     eval "amlogic_uboot=(\${uboot_${family_rename}[@]})"
@@ -730,21 +723,8 @@ make_image() {
     cd "${current_path}"
 
     # Set Armbian image file parameters
-    [[ "${PLATFORM}" == "amlogic" ]] && {
-        skip_mb="4"
-        partition_table_type="msdos"
-        bootfs_type="fat32"
-    }
-    [[ "${PLATFORM}" == "rockchip" ]] && {
-        skip_mb="16"
-        partition_table_type="gpt"
-        bootfs_type="ext4"
-    }
-    [[ "${PLATFORM}" == "allwinner" ]] && {
-        skip_mb="16"
-        partition_table_type="msdos"
-        bootfs_type="fat32"
-    }
+    skip_mb="4"
+    partition_table_type="msdos"
 
     # Special procedures for flashing specific boards
     # Reset default parameters
@@ -765,27 +745,19 @@ make_image() {
     truncate -s ${IMG_SIZE}M "${build_image_file}" >/dev/null 2>&1
 
     parted -s "${build_image_file}" mklabel ${partition_table_type} 2>/dev/null
-    parted -s "${build_image_file}" mkpart primary ${bootfs_type} $((skip_mb))MiB $((skip_mb + boot_mb - 1))MiB 2>/dev/null
+    parted -s "${build_image_file}" mkpart primary fat32 $((skip_mb))MiB $((skip_mb + boot_mb - 1))MiB 2>/dev/null
     parted -s "${build_image_file}" mkpart primary ${rootfs_type} $((skip_mb + boot_mb))MiB 100% 2>/dev/null
 
     loop_new="$(losetup -P -f --show "${build_image_file}")"
     [[ -n "${loop_new}" ]] || error_msg "losetup ${build_image_file} failed."
 
-    # Confirm BOOT_UUID
-    BOOT_UUID="$(cat /proc/sys/kernel/random/uuid)"
-    [[ -z "${BOOT_UUID}" ]] && BOOT_UUID="$(uuidgen)"
-    [[ -z "${BOOT_UUID}" ]] && error_msg "The uuidgen is invalid, cannot continue."
     # Confirm ROOTFS_UUID
     ROOTFS_UUID="$(cat /proc/sys/kernel/random/uuid)"
     [[ -z "${ROOTFS_UUID}" ]] && ROOTFS_UUID="$(uuidgen)"
     [[ -z "${ROOTFS_UUID}" ]] && error_msg "The uuidgen is invalid, cannot continue."
 
     # Format bootfs partition
-    if [[ "${bootfs_type}" == "fat32" ]]; then
-        mkfs.vfat -F 32 -n "BOOT" ${loop_new}p1 >/dev/null 2>&1
-    else
-        mkfs.ext4 -F -q -U ${BOOT_UUID} -L "BOOT" -b 4k -m 0 ${loop_new}p1 >/dev/null 2>&1
-    fi
+    mkfs.vfat -F 32 -n "BOOT" ${loop_new}p1 >/dev/null 2>&1
 
     # Format rootfs partition
     if [[ "${rootfs_type}" == "btrfs" ]]; then
@@ -794,58 +766,17 @@ make_image() {
         mkfs.ext4 -F -q -U ${ROOTFS_UUID} -L "ROOTFS" -b 4k -m 0 ${loop_new}p2 >/dev/null 2>&1
     fi
 
-    # Write the specific bootloader for [ Amlogic ] boxes
-    [[ "${PLATFORM}" == "amlogic" ]] && {
-        bootloader_path="${uboot_path}/${PLATFORM}/bootloader"
-        if [[ -n "${MAINLINE_UBOOT}" && -f "${bootloader_path}/${MAINLINE_UBOOT}" ]]; then
-            dd if="${bootloader_path}/${MAINLINE_UBOOT}" of="${loop_new}" conv=fsync bs=1 count=444 2>/dev/null
-            dd if="${bootloader_path}/${MAINLINE_UBOOT}" of="${loop_new}" conv=fsync bs=512 skip=1 seek=1 2>/dev/null
-            #echo -e "${INFO} 01. For [ ${board} ] write bootloader: ${MAINLINE_UBOOT}"
-        elif [[ -n "${BOOTLOADER_IMG}" && -f "${bootloader_path}/${BOOTLOADER_IMG}" ]]; then
-            dd if="${bootloader_path}/${BOOTLOADER_IMG}" of="${loop_new}" conv=fsync bs=1 count=444 2>/dev/null
-            dd if="${bootloader_path}/${BOOTLOADER_IMG}" of="${loop_new}" conv=fsync bs=512 skip=1 seek=1 2>/dev/null
-            #echo -e "${INFO} 02. For [ ${board} ] write bootloader: ${BOOTLOADER_IMG}"
-        fi
-    }
-
-    # Write the specific bootloader for [ Rockchip ] boxes
-    [[ "${PLATFORM}" == "rockchip" ]] && {
-        bootloader_path="${uboot_path}/${PLATFORM}/${board}"
-        if [[ -n "${BOOTLOADER_IMG}" && -f "${bootloader_path}/${BOOTLOADER_IMG}" ]] &&
-            [[ -n "${MAINLINE_UBOOT}" && -f "${bootloader_path}/${MAINLINE_UBOOT}" ]] &&
-            [[ -n "${TRUST_IMG}" && -f "${bootloader_path}/${TRUST_IMG}" ]]; then
-            dd if="${bootloader_path}/${BOOTLOADER_IMG}" of="${loop_new}" conv=fsync,notrunc bs=512 seek=64 2>/dev/null
-            dd if="${bootloader_path}/${MAINLINE_UBOOT}" of="${loop_new}" conv=fsync,notrunc bs=512 seek=16384 2>/dev/null
-            dd if="${bootloader_path}/${TRUST_IMG}" of="${loop_new}" conv=fsync,notrunc bs=512 seek=24576 2>/dev/null
-            #echo -e "${INFO} 01. For [ ${board} ] write bootloader: ${TRUST_IMG}"
-        elif [[ -n "${BOOTLOADER_IMG}" && -f "${bootloader_path}/${BOOTLOADER_IMG}" ]] &&
-            [[ -n "${MAINLINE_UBOOT}" && -f "${bootloader_path}/${MAINLINE_UBOOT}" ]]; then
-            dd if="${bootloader_path}/${BOOTLOADER_IMG}" of="${loop_new}" conv=fsync,notrunc bs=512 seek=64 2>/dev/null
-            dd if="${bootloader_path}/${MAINLINE_UBOOT}" of="${loop_new}" conv=fsync,notrunc bs=512 seek=16384 2>/dev/null
-            #echo -e "${INFO} 02. For [ ${board} ] write bootloader: ${MAINLINE_UBOOT}"
-        elif [[ "${BOOTLOADER_IMG}" == "u-boot-rockchip.bin" && -f "${bootloader_path}/${BOOTLOADER_IMG}" ]]; then
-            dd if="${bootloader_path}/${BOOTLOADER_IMG}" of="${loop_new}" conv=fsync,notrunc bs=512 seek=64 2>/dev/null
-            #echo -e "${INFO} 03. For [ ${board} ] write bootloader: ${BOOTLOADER_IMG}"
-        elif [[ -n "${BOOTLOADER_IMG}" && -f "${bootloader_path}/${BOOTLOADER_IMG}" ]]; then
-            dd if="${bootloader_path}/${BOOTLOADER_IMG}" of="${loop_new}" conv=fsync,notrunc bs=512 skip=64 seek=64 2>/dev/null
-            #echo -e "${INFO} 04. For [ ${board} ] write bootloader: ${BOOTLOADER_IMG}"
-        fi
-    }
-
-    # Write the specific bootloader for [ Allwinner ] boxes
-    [[ "${PLATFORM}" == "allwinner" ]] && {
-        bootloader_path="${uboot_path}/${PLATFORM}/${board}"
-        if [[ -n "${BOOTLOADER_IMG}" && -f "${bootloader_path}/${BOOTLOADER_IMG}" ]] &&
-            [[ -n "${MAINLINE_UBOOT}" && -f "${bootloader_path}/${MAINLINE_UBOOT}" ]]; then
-            dd if="${bootloader_path}/${BOOTLOADER_IMG}" of="${loop_new}" conv=fsync,notrunc bs=8k seek=1 2>/dev/null
-            dd if="${bootloader_path}/${MAINLINE_UBOOT}" of="${loop_new}" conv=fsync,notrunc bs=8k seek=5 2>/dev/null
-            #echo -e "${INFO} 01. For [ ${board} ] write bootloader: ${MAINLINE_UBOOT}"
-        elif [[ -n "${BOOTLOADER_IMG}" && -f "${bootloader_path}/${BOOTLOADER_IMG}" ]]; then
-            dd if=/dev/zero of="${loop_new}" bs=1k count=1023 seek=1 status=noxfer 2>/dev/null
-            dd if="${bootloader_path}/${BOOTLOADER_IMG}" of="${loop_new}" conv=fsync,notrunc bs=8k seek=1 2>/dev/null
-            #echo -e "${INFO} 02. For [ ${board} ] write bootloader: ${BOOTLOADER_IMG}"
-        fi
-    }
+    # Write the specific bootloader
+    bootloader_path="${uboot_path}/${PLATFORM}/bootloader"
+    if [[ -n "${MAINLINE_UBOOT}" && -f "${bootloader_path}/${MAINLINE_UBOOT}" ]]; then
+        dd if="${bootloader_path}/${MAINLINE_UBOOT}" of="${loop_new}" conv=fsync bs=1 count=444 2>/dev/null
+        dd if="${bootloader_path}/${MAINLINE_UBOOT}" of="${loop_new}" conv=fsync bs=512 skip=1 seek=1 2>/dev/null
+        #echo -e "${INFO} 01. For [ ${board} ] write bootloader: ${MAINLINE_UBOOT}"
+    elif [[ -n "${BOOTLOADER_IMG}" && -f "${bootloader_path}/${BOOTLOADER_IMG}" ]]; then
+        dd if="${bootloader_path}/${BOOTLOADER_IMG}" of="${loop_new}" conv=fsync bs=1 count=444 2>/dev/null
+        dd if="${bootloader_path}/${BOOTLOADER_IMG}" of="${loop_new}" conv=fsync bs=512 skip=1 seek=1 2>/dev/null
+        #echo -e "${INFO} 02. For [ ${board} ] write bootloader: ${BOOTLOADER_IMG}"
+    fi
 
     # Special procedures for flashing specific boards
     [[ "${write_board_file}" == "yes" ]] && write_board_bootloader
@@ -862,11 +793,7 @@ copy_files() {
     chown root:root ${tag_bootfs} ${tag_rootfs}
 
     # Mount bootfs
-    if [[ "${bootfs_type}" == "fat32" ]]; then
-        mount_try vfat ${loop_new}p1 ${tag_bootfs}
-    else
-        mount_try ext4 ${loop_new}p1 ${tag_bootfs}
-    fi
+    mount_try vfat ${loop_new}p1 ${tag_bootfs}
 
     # Mount rootfs
     if [[ "${rootfs_type}" == "btrfs" ]]; then
@@ -898,16 +825,14 @@ copy_files() {
     [[ -n "${tag_rootfs}" && -d "${tag_rootfs}/usr/lib/u-boot" ]] && rm -rf "${tag_rootfs}/usr/lib/u-boot"/*
     [[ -d "${bootloader_path}" ]] && cp -af --no-preserve=ownership "${bootloader_path}/." "${tag_rootfs}/usr/lib/u-boot"
 
-    # Copy the Amlogic overload files
-    [[ "${PLATFORM}" == "amlogic" ]] && {
-        for au in "${amlogic_uboot[@]}"; do
-            if [[ -f "${uboot_path}/${PLATFORM}/overload/u-boot-${au}" ]]; then
-                cp -f "${uboot_path}/${PLATFORM}/overload/u-boot-${au}" "${tag_bootfs}"
-            else
-                error_msg "The [ u-boot-${au} ] file is missing in the [ ${uboot_path}/${PLATFORM}/overload ] directory."
-            fi
-        done
-    }
+    # Copy the u-boot overload files
+    for au in "${amlogic_uboot[@]}"; do
+        if [[ -f "${uboot_path}/${PLATFORM}/overload/u-boot-${au}" ]]; then
+            cp -f "${uboot_path}/${PLATFORM}/overload/u-boot-${au}" "${tag_bootfs}"
+        else
+            error_msg "The [ u-boot-${au} ] file is missing in the [ ${uboot_path}/${PLATFORM}/overload ] directory."
+        fi
+    done
 
     # Remove the .git directories
     rm -rf $(find ${tmp_build} -type d -name '.git')
@@ -933,16 +858,13 @@ replace_kernel() {
 
     # 01. For /boot five files
     tar -mxzf ${kernel_boot} -C ${tag_bootfs}
-    [[ "${PLATFORM}" == "allwinner" ]] && (cd ${tag_bootfs} && cp -f uInitrd-${kernel_name} uInitrd && cp -f vmlinuz-${kernel_name} Image)
-    [[ "${PLATFORM}" == "amlogic" ]] && (cd ${tag_bootfs} && cp -f uInitrd-${kernel_name} uInitrd && cp -f vmlinuz-${kernel_name} zImage)
-    [[ "${PLATFORM}" == "rockchip" ]] && (cd ${tag_bootfs} && ln -sf uInitrd-${kernel_name} uInitrd && ln -sf vmlinuz-${kernel_name} Image)
+    (cd ${tag_bootfs} && cp -f uInitrd-${kernel_name} uInitrd && cp -f vmlinuz-${kernel_name} zImage)
     [[ "$(ls ${tag_bootfs}/*${kernel_name} -l 2>/dev/null | grep "^-" | wc -l)" -ge "2" ]] || error_msg "The /boot files is missing."
-    [[ "${PLATFORM}" == "amlogic" ]] && get_textoffset "${tag_bootfs}/zImage"
+    get_textoffset "${tag_bootfs}/zImage"
 
     # 02. For /boot/dtb/${PLATFORM}/*
     [[ -d "${tag_bootfs}/dtb/${PLATFORM}" ]] || mkdir -p ${tag_bootfs}/dtb/${PLATFORM}
     tar -mxzf ${kernel_dtb} -C ${tag_bootfs}/dtb/${PLATFORM}
-    [[ "${PLATFORM}" == "rockchip" ]] && ln -sf dtb ${tag_bootfs}/dtb-${kernel_name}
     [[ "$(ls ${tag_bootfs}/dtb/${PLATFORM} -l 2>/dev/null | grep "^-" | wc -l)" -ge "2" ]] || error_msg "/boot/dtb/${PLATFORM} files is missing."
 
     # 03. For /usr/src/linux-headers-${kernel_name}
@@ -965,8 +887,8 @@ refactor_bootfs() {
     process_msg "(5/7) Refactor bootfs files."
     cd "${tag_bootfs}"
 
-    # Process Amlogic series boot partition files
-    [[ "${PLATFORM}" == "amlogic" && "${need_overload}" == "yes" ]] && {
+    # Process the u-boot overload file
+    [[ "${need_overload}" == "yes" ]] && {
         if [[ -n "${UBOOT_OVERLOAD}" && -f "${UBOOT_OVERLOAD}" ]]; then
             cp -f ${UBOOT_OVERLOAD} u-boot.ext
             chmod +x u-boot.ext
@@ -979,15 +901,9 @@ refactor_bootfs() {
     if [[ "${rootfs_type}" == "btrfs" ]]; then
         # For uEnv.txt
         uenv_rootdev="UUID=${ROOTFS_UUID} rootflags=compress=zstd:6 rw rootwait rootfstype=btrfs"
-        # For armbianEnv.txt
-        armbianenv_rootdev="UUID=${ROOTFS_UUID}"
-        armbianenv_rootflags="compress=zstd:6"
     else
         # For uEnv.txt
         uenv_rootdev="UUID=${ROOTFS_UUID} rootflags=data=writeback rw rootwait rootfstype=ext4"
-        # For armbianEnv.txt
-        armbianenv_rootdev="UUID=${ROOTFS_UUID}"
-        armbianenv_rootflags="rw,errors=remount-ro"
     fi
 
     # Edit the uEnv.txt
@@ -996,8 +912,6 @@ refactor_bootfs() {
         sed -i \
             -e "s|LABEL=ROOTFS|${uenv_rootdev}|g" \
             -e "s|meson.*.dtb|${FDTFILE}|g" \
-            -e "s|sun.*.dtb|${FDTFILE}|g" \
-            -e "s|rk.*.dtb|${FDTFILE}|g" \
             "${uenv_conf_file}"
     }
 
@@ -1008,39 +922,13 @@ refactor_bootfs() {
         sed -i \
             -e "s|LABEL=ROOTFS|${uenv_rootdev}|g" \
             -e "s|meson.*.dtb|${FDTFILE}|g" \
-            -e "s|sun.*.dtb|${FDTFILE}|g" \
-            -e "s|rk.*.dtb|${FDTFILE}|g" \
             "${boot_extlinux_file}"
         # If needed, such as t95z(s905x), rename delete .bak
         [[ "${BOOT_CONF}" == "extlinux.conf" ]] && mv -f "${boot_extlinux_file}" "${rename_extlinux_file}"
     }
 
-    # Board-specific (ALIENTEK-QuarkPi-CA2 / RK3588S): the stock on-board Rockchip U-Boot shipped with
-    # this board only scans <devname>_extlinux/extlinux.conf on the boot partitions.
-    if [[ "${board}" == "quarkpi-ca2" && -f "${rename_extlinux_file}" ]]; then
-        for _d in mmc0_extlinux mmc1_extlinux; do
-            mkdir -p "${_d}"
-            sed -e "s|/Image|/vmlinuz-${kernel_name}|g" \
-                -e "s|/uInitrd|/uInitrd-${kernel_name}|g" \
-                -e "s|console=ttyS2,1500000|console=ttyFIQ0,1500000|g" \
-                "${rename_extlinux_file}" >"${_d}/extlinux.conf"
-        done
-    fi
-
-    # Edit the armbianEnv.txt
-    armbianenv_conf_file="armbianEnv.txt"
-    [[ -f "${armbianenv_conf_file}" ]] && {
-        sed -i \
-            -e "s|\(fdtfile=.*\/\)[^/]*$|\1${FDTFILE}|g" \
-            -e "s|^rootfstype=.*|rootfstype=${rootfs_type}|g" \
-            -e "s|^rootdev=.*|rootdev=${armbianenv_rootdev}|g" \
-            -e "s|^rootflags=.*|rootflags=${armbianenv_rootflags}|g" \
-            -e "s|^overlay_prefix=.*|overlay_prefix=${FAMILY}|g" \
-            "${armbianenv_conf_file}"
-    }
-
     # Check device configuration files
-    [[ -f "${uenv_conf_file}" || -f "${rename_extlinux_file}" || -f "${armbianenv_conf_file}" ]] || error_msg "Missing [ /boot/*Env.txt ]"
+    [[ -f "${uenv_conf_file}" || -f "${rename_extlinux_file}" ]] || error_msg "Missing [ /boot/*Env.txt ]"
 }
 
 refactor_rootfs() {
@@ -1060,8 +948,6 @@ refactor_rootfs() {
         rm -rf usr/lib/bak-nand-sata-install
         mv -f usr/lib/nand-sata-install usr/lib/bak-nand-sata-install
     }
-    # Remove invalid install file
-    [[ "${PLATFORM}" == "rockchip" && -f "usr/sbin/armbian-install" ]] && rm -f usr/sbin/armbian-install
 
     # Disable update_initramfs
     initramfs_conf="etc/initramfs-tools/update-initramfs.conf"
@@ -1119,9 +1005,6 @@ refactor_rootfs() {
     fi
     # Update mount settings
     sed -i "s|^LABEL=ROOTFS.*|UUID=${ROOTFS_UUID}  /      ${rootfs_type}  ${fstab_string}  0 1|g" etc/fstab
-    [[ "${bootfs_type}" == "ext4" ]] && {
-        sed -i "s|^LABEL=BOOT.*|UUID=${BOOT_UUID}  /boot  ext4  defaults  0 2|g" etc/fstab
-    }
 
     # Update release information
     [[ -f "${armbian_release_file}" ]] && {
@@ -1180,10 +1063,6 @@ refactor_rootfs() {
     # Add custom disabled alias extension load modules
     custom_blacklist="etc/modprobe.d/blacklist.conf"
     [[ -f "${custom_blacklist}" ]] || echo -e "# This file lists the disabled alias extension load modules." >${custom_blacklist}
-    [[ "${FDTFILE}" == "meson-sm1-skyworth-lb2004-a4091.dtb" ]] && {
-        echo -e "\n# For Tencent Aurora 3Pro (s905x3-b) box." >>${custom_blacklist}
-        echo -e "blacklist btmtksdio" >>${custom_blacklist}
-    }
 
     # Make the .bashrc take effect, Default shell settings file: /etc/default/useradd
     echo '[[ "${SHELL}" == *bash && -f "${HOME}/.bashrc" ]] && . ${HOME}/.bashrc' >>etc/profile
@@ -1247,15 +1126,6 @@ refactor_rootfs() {
     armbian_firstlogin="usr/lib/armbian/armbian-firstlogin"
     [[ -f "${armbian_firstlogin}" ]] && sed -i "s#.*systemctl is-system-running.*#	timeout 120s systemctl is-system-running --wait > /dev/null 2>\&1 || true#g" "${armbian_firstlogin}"
 
-    # Fix abnormal CPU temperature
-    temp_file="usr/lib/armbian/armbian-allwinner-battery"
-    [[ -f "${temp_file}" ]] && {
-        insert_line="$(cat ${temp_file} | grep -n 'CPU_TEMP_OFFSET' | awk -F':' '{print $1}')"
-        [[ -n "${insert_line}" ]] && {
-            sed -i "${insert_line}i\        [[ \"\$(echo \${board_temp} | awk -F'.' '{print \$1}' | wc -c)\" -gt \"3\" ]] && board_temp=\${board_temp:0:2}" ${temp_file}
-        }
-    }
-
     # Optimize systemd-osc-context for SSH
     osc_file="usr/lib/systemd/profile.d/80-systemd-osc-context.sh"
     [[ -f "${osc_file}" ]] && {
@@ -1317,7 +1187,6 @@ refactor_rootfs() {
         "BOOT_CONF='${BOOT_CONF}'"
         "ROOTFS_TYPE='${rootfs_type}'"
         "DISK_TYPE='usb'"
-        "AMPART_STATUS='no'"
         "MLUBOOT_STATUS='no'"
         "MAINLINE_UBOOT='${RECORD_MAINLINE_UBOOT}'"
         "BOOTLOADER_IMG='${RECORD_BOOTLOADER_IMG}'"
@@ -1327,8 +1196,7 @@ refactor_rootfs() {
         "BUILDER_NAME='${builder_name}'"
         "PACKAGED_DATE='$(date +%Y-%m-%d)'"
     )
-    [[ "${PLATFORM}" == "rockchip" ]] && release_lines+=("TRUST_IMG='${RECORD_TRUST_IMG}'")
-    [[ "${PLATFORM}" == "amlogic" ]] && release_lines+=("UBOOT_OVERLOAD='${UBOOT_OVERLOAD}'")
+    release_lines+=("UBOOT_OVERLOAD='${UBOOT_OVERLOAD}'")
     printf '%s\n' "${release_lines[@]}" >>${ophub_release_file}
 
     sync && sleep 3
