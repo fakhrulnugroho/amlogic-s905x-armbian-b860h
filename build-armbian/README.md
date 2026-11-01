@@ -6,7 +6,7 @@ The files required for compiling the Armbian system are organized in their respe
 
 This directory contains all the files used during the Armbian build process. The `common-files` subdirectory holds platform-independent shared files, the `platform-files` subdirectory holds platform-specific files, and the `different-files` subdirectory holds device-specific configuration files. For further details, refer to Section `12.15` of the [documentation](../documents/).
 
-Required firmware files are automatically downloaded from the [ophub/firmware](https://github.com/ophub/firmware) repository into the `common-files/usr/lib/firmware` directory.
+Firmware comes from the base image. `rebuild` keeps only `meson`, `rtl_nic` and `regulatory.db*` in `usr/lib/firmware` and removes the rest.
 
 ## kernel
 
