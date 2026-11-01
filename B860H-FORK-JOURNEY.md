@@ -3,7 +3,7 @@
 Dokumen ini merangkum rencana menjadikan repo ini fork khusus STB ZTE B860H (Amlogic S905X, RAM 2 GB), board `s905x-b860h`, ID 106.
 
 - **Dibuat:** 2026-10-31
-- **Status:** fase 0 dan 1 selesai
+- **Status:** fase 0 dan 1 selesai, penghapusan fase 2 sudah dikerjakan dan menunggu uji build serta boot
 - **Tujuan akhir:** image server minimal dengan SSH dari repo ini, untuk unit lain dengan hardware sama persis
 - **Kebutuhan:** koneksi LAN, tanpa WiFi, dan tanpa backup eMMC atas keputusan pemilik unit
 - **Repo:** `fakhrulnugroho/amlogic-s905x-armbian-b860h`
@@ -81,13 +81,15 @@ Biarkan input `config_board` di `odroidn2`. Input itu nama board di `armbian/bui
 
 **Tujuan:** membuang data perangkat lain tanpa menyentuh logika skrip. Ukuran image praktis tidak berubah, karena manfaatnya ada pada kesederhanaan repo. Daftar di bawah mengasumsikan target hanya unit B860H, dan harus disesuaikan kalau perangkat lain ikut didukung.
 
-- [ ] Hapus `platform-files/rockchip` (176 file) dan `platform-files/allwinner` (24 file).
-- [ ] Hapus isi `different-files/` (84 board, 368 file). Tidak ada folder untuk B860H di sana.
-- [ ] Di `model_database.conf`, sisakan baris 105 dan 106. Baris 105 memakai DTB P212 dan menjadi cadangan.
-- [ ] Hapus workflow x86 dan `build-armbian-using-official-image.yml`.
-- [ ] Pangkas daftar `armbian_board` di dua workflow build yang tersisa.
-- [ ] Hapus README `.cn.md` dan `.ja.md`.
-- [ ] Pertahankan `LICENSE`, `CONTRIBUTORS.md`, header copyright, dokumentasi kernel, dan bagian 12.3 soal pemulihan.
+- [x] Hapus `platform-files/rockchip` (176 file) dan `platform-files/allwinner` (24 file).
+- [x] Hapus isi `different-files/` (84 board, 368 file). Tidak ada folder untuk B860H di sana.
+- [x] Di `model_database.conf`, sisakan baris 105 dan 106. Baris 105 memakai DTB P212 dan menjadi cadangan.
+- [x] Hapus workflow x86 dan `build-armbian-using-official-image.yml`.
+- [x] Pangkas daftar `armbian_board` di dua workflow build yang tersisa. Default-nya sekarang `s905x-b860h`.
+- [x] Hapus README `.cn.md` dan `.ja.md`.
+- [x] Pertahankan `LICENSE`, `CONTRIBUTORS.md`, header copyright, dokumentasi kernel, dan bagian 12.3 soal pemulihan.
+- [ ] Merge ke `main`, push, lalu bangun image. Workflow selalu memakai `rebuild` dari `main`, jadi branch tidak bisa diuji sendiri.
+- [ ] Uji boot dari flashdisk.
 
 Penghapusan DTB non-GXL tidak termasuk fase ini, karena kernel mengembalikannya saat build sehingga tidak ada hasilnya.
 
