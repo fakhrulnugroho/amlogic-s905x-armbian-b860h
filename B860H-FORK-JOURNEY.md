@@ -119,14 +119,14 @@ Isi image berubah di fase ini: `/boot` tidak lagi memuat 5 file `u-boot-*.bin` s
 
 - [ ] Simpan penyesuaian di `different-files/s905x-b860h/rootfs/`, bukan di box.
 - [ ] Sediakan cara pasang untuk unit baru: boot SD, `armbian-install`, dan bootloader HG680P kalau dibutuhkan.
-- [ ] Uji `armbian-install` hanya di unit uji yang boleh dihapus isinya.
-- [ ] Atur zram, yang belum dikonfigurasi overlay repo.
-- [ ] Turunkan `commit=600` di `fstab` dan `armbian-install`.
-- [ ] Perkecil CMA 256 MiB kalau box dipakai tanpa HDMI.
+- [ ] Uji `armbian-install` hanya di unit uji yang boleh dihapus isinya. Unit kedua sudah tersedia untuk ini.
+- [ ] Pastikan zram aktif dengan `zramctl`. Image Release sudah mengaktifkan `armbian-zram-config` dengan setelan bawaan, jadi overlay hanya perlu berubah kalau nilainya mau diganti.
+- [x] Turunkan `commit=600` ke `commit=60` di `rebuild`, `armbian-install`, dan `fstab`. Nilai di `rebuild` yang menentukan isi image, karena `sed` menimpa baris root di `fstab`. Belum diuji boot.
+- [x] Perkecil CMA dari 256 MiB ke `cma=64M` di `uEnv.txt` dan `extlinux.conf.bak`, karena box dipakai tanpa HDMI. Belum diuji boot.
 - [ ] Ganti ke `BUILD_MINIMAL=yes` di workflow base image, karena targetnya server minimal. Uji terpisah, karena belum teruji dengan `rebuild`.
 - [ ] Pastikan paket `armbian-install` ada di image minimal: `parted`, `mkfs.*`, `hexdump`, `fdisk`, dan `lsblk`.
-- [ ] Nonaktifkan layanan yang tidak dipakai di server LAN.
-- [ ] Pangkas firmware hanya kalau masih perlu.
+- [x] Mask `wpa_supplicant`, `man-db.timer`, `openvpn`, `rpcbind`, `nfs-client.target`, dan `vnstat` di `rebuild`. Unit tidak memakai VPN maupun NFS. Belum diuji boot.
+- [x] Pangkas firmware di `rebuild`: hanya `meson`, `rtl_nic`, dan `regulatory.db*` yang disimpan, dan `ophub/firmware` tidak lagi diunduh. Belum dibuild dan belum diuji boot.
 
 **Selesai kalau:** image hasil tuning bisa boot dari SD, lalu terpasang dan boot dari eMMC unit uji tanpa SD.
 
@@ -140,9 +140,8 @@ Isi image berubah di fase ini: `/boot` tidak lagi memuat 5 file `u-boot-*.bin` s
 | File HG680P tidak ada di `ophub/u-boot` | Kolom `BOOTLOADER_IMG` belum bisa langsung dipakai | Sediakan dan verifikasi file sendiri |
 | DTB di repo diubah | Ditimpa kernel saat `rebuild` dan `armbian-update` | Pakai DTB bawaan kernel apa adanya |
 | Skrip perangkat masih ke upstream | `armbian-sync` menimpa skrip kustom | Selesaikan fase 1 sebelum image dipakai |
-| Firmware dipangkas sampai 5 folder atau kurang | Semua firmware diunduh ulang | Sesuaikan cek di `download_depends` |
 | Modul kernel dinonaktifkan berdasarkan nama | Contohnya `MDIO_BUS_MUX_MESON_GXL` kemungkinan dibutuhkan LAN internal | Nonaktifkan satu per satu dan uji LAN tiap perubahan |
-| Ketergantungan pada ophub setelah fase 3 | Build gagal kalau `ophub/kernel`, `ophub/u-boot`, `ophub/firmware`, atau image Docker berubah | Pindahkan yang penting ke repo sendiri |
+| Ketergantungan pada ophub setelah fase 3 | Build gagal kalau `ophub/kernel`, `ophub/u-boot`, atau image Docker berubah | Pindahkan yang penting ke repo sendiri |
 
 ## Jangan dihapus
 
