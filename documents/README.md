@@ -1,7 +1,5 @@
 # Armbian Build and Usage Guide
 
-[English Instructions](README.md) | [中文说明](README.cn.md) | [日本語説明](README.ja.md)
-
 GitHub Actions is a CI/CD service from Microsoft that provides high-performance virtual server environments for building, testing, packaging, and deploying projects. Public repositories can use it free of charge with no time limit, and each build can run for up to 6 hours — more than sufficient for compiling Armbian (typically completed within about 3 hours). This project is shared for educational and experience-exchange purposes. Please do not initiate any harmful network attacks or misuse GitHub Actions.
 
 # Table of Contents
@@ -1551,7 +1549,7 @@ Devices set to `no` are not packaged by default. To use them, download the Armbi
 
 Common files are placed in `build-armbian/armbian-files/common-files`, shared across all platforms.
 
-Platform-specific files are placed in `build-armbian/armbian-files/platform-files/<platform>`: [Amlogic](../build-armbian/armbian-files/platform-files/amlogic), [Rockchip](../build-armbian/armbian-files/platform-files/rockchip), and [Allwinner](../build-armbian/armbian-files/platform-files/allwinner). The `bootfs` directory contains /boot partition files, and the `rootfs` directory contains Armbian system files.
+Platform-specific files are placed in `build-armbian/armbian-files/platform-files/<platform>`. This fork keeps only [Amlogic](../build-armbian/armbian-files/platform-files/amlogic). The `bootfs` directory contains /boot partition files, and the `rootfs` directory contains Armbian system files.
 
 For devices with special configuration requirements, add an independent directory named after the `BOARD` in `build-armbian/armbian-files/different-files`. Create `bootfs` and `rootfs` subdirectories as needed to add files under the system's `/boot` partition or other system paths. All folder names correspond to actual paths in the Armbian system. These files can add new files or override files from common and platform directories.
 
