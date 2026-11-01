@@ -232,7 +232,7 @@ sudo apt-get install -y $(cat compile-kernel/tools/script/ubuntu2404-build-armbi
 
 3. Rebuild: If [Releases](https://github.com/ophub/amlogic-s9xxx-armbian/releases) already contains compiled `Armbian_.*-trunk_.*.img.gz` files and you only need to repackage for other boards, skip the source compilation step and use [build-armbian-using-releases-files.yml](.github/workflows/build-armbian-using-releases-files.yml) for secondary builds.
 
-4. To use other Armbian systems (e.g., the [odroidn2](https://armbian.tnahosting.net/dl/odroidn2/archive/) image from the official [armbian.tnahosting.net](https://armbian.tnahosting.net/dl/) download site), simply reference this repository's script in the workflow file [build-armbian-using-official-image.yml](.github/workflows/build-armbian-using-official-image.yml) for Armbian restructuring to support other devices. Example:
+4. To use other Armbian systems (e.g., the [odroidn2](https://armbian.tnahosting.net/dl/odroidn2/archive/) image from the official [armbian.tnahosting.net](https://armbian.tnahosting.net/dl/) download site), simply reference this repository's script in your workflow file for Armbian restructuring to support other devices. Example:
 
 ```yaml
 - name: Build Armbian
