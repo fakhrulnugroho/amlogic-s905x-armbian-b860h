@@ -3,7 +3,7 @@
 Dokumen ini merangkum rencana menjadikan repo ini fork khusus STB ZTE B860H (Amlogic S905X, RAM 2 GB), board `s905x-b860h`, ID 106.
 
 - **Dibuat:** 2026-10-31
-- **Status:** fase 0 dan 1 selesai, penghapusan fase 2 sudah dikerjakan dan menunggu uji build serta boot
+- **Status:** fase 0 dan 1 selesai, perubahan fase 2 dan 3 sudah dikerjakan tapi belum dibuild dan belum diuji boot
 - **Tujuan akhir:** image server minimal dengan SSH dari repo ini, untuk unit lain dengan hardware sama persis
 - **Kebutuhan:** koneksi LAN, tanpa WiFi, dan tanpa backup eMMC atas keputusan pemilik unit
 - **Repo:** `fakhrulnugroho/amlogic-s905x-armbian-b860h`
@@ -99,14 +99,17 @@ Penghapusan DTB non-GXL tidak termasuk fase ini, karena kernel mengembalikannya 
 
 **Tujuan:** membuang logika Rockchip dan Allwinner setelah datanya terbukti aman dihapus.
 
-- [ ] Buang cabang Rockchip dan Allwinner dari `rebuild`.
-- [ ] Buang logika board lain dari `start_service.sh`.
-- [ ] Sederhanakan `armbian-update` dan `armbian-fix`.
-- [ ] Pangkas `armbian-install` ke cabang s905x.
-- [ ] Cegah `armbian-install -a yes` membuat layout 117 MiB, karena s905x harus memakai layout 700 MiB.
-- [ ] Sesuaikan `uboot_meson_gxl`. Kalau daftar ini tidak dipangkas, semua filenya tetap wajib ada.
-- [ ] Sesuaikan cek unduhan u-boot, yang menghitung folder `u-boot/rockchip`.
-- [ ] Perbarui "Functions list" dan `CLAUDE.md`.
+- [x] Buang cabang Rockchip dan Allwinner dari `rebuild`. `PLATFORM` tetap ada sebagai data, karena nama file kernel dan `/boot/dtb/amlogic` bergantung padanya.
+- [x] Buang logika board lain dari `start_service.sh`.
+- [x] Sederhanakan `armbian-update` dan `armbian-fix`.
+- [x] Pangkas `armbian-install` ke cabang s905x, termasuk menu ID 0 (model kustom).
+- [x] Cegah layout 117 MiB. Logika ampart dan opsi `-a` dibuang, sedangkan binary `ampart` tetap ada untuk diagnosa eMMC.
+- [x] Pangkas daftar u-boot jadi `amlogic_uboot=("p212.bin")`.
+- [x] Ubah cek unduhan u-boot supaya mencari file overload, bukan menghitung folder `u-boot/rockchip`.
+- [x] Perbarui "Functions list" dan `CLAUDE.md`.
+- [ ] Bangun image dan uji boot dari flashdisk.
+
+Isi image berubah di fase ini: `/boot` tidak lagi memuat 5 file `u-boot-*.bin` selain P212, dan `/etc/ophub-release` tidak lagi punya `AMPART_STATUS`. Uji boot jadi lebih penting dibanding fase 2.
 
 **Selesai kalau:** `bash -n` lolos untuk semua skrip, lalu build dan boot tetap sama.
 
