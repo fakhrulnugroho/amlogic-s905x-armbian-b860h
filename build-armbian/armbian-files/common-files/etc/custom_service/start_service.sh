@@ -47,9 +47,6 @@ FDTFILE=""
 # 3) /boot/extlinux/extlinux.conf : "    fdt /dtb/.../xxx.dtb"
 [[ -z "${FDTFILE}" && -f "/boot/extlinux/extlinux.conf" ]] &&
     FDTFILE="$(grep -Eo '/dtb/[^[:space:]]+\.dtb' /boot/extlinux/extlinux.conf 2>/dev/null | head -n1 | sed -E 's#.*/##')"
-# 4) /boot/armbianEnv.txt : fdtfile=vendor/xxx.dtb  (or fdtfile=xxx.dtb)
-[[ -z "${FDTFILE}" && -f "/boot/armbianEnv.txt" ]] &&
-    FDTFILE="$(grep -E '^fdtfile=.*\.dtb$' /boot/armbianEnv.txt 2>/dev/null | head -n1 | sed -E 's#^fdtfile=##; s#.*/##')"
 log_message "Detected FDT file: ${FDTFILE:-not found}"
 
 # General System Services
